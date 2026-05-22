@@ -21,14 +21,23 @@ class DashboardController extends Controller
         ];
 
         $start = Carbon::now()->subMonths(5)->startOfMonth();
+        $months = [];
+
+        for ($i = 0; $i < 6; $i++) {
+            $months[] = $start->copy()->addMonths($i)->format('Y-m');
+        }
+
         $reviewStats = Review::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as total")
             ->where('created_at', '>=', $start)
             ->groupBy('month')
             ->orderBy('month')
-            ->get();
+            ->get()
+            ->pluck('total', 'month');
 
-        $chartLabels = $reviewStats->pluck('month');
-        $chartValues = $reviewStats->pluck('total');
+        $chartLabels = $months;
+        $chartValues = array_map(static function ($month) use ($reviewStats) {
+            return (int) ($reviewStats[$month] ?? 0);
+        }, $months);
 
         return view('admin.dashboard', compact('stats', 'chartLabels', 'chartValues'));
     }
